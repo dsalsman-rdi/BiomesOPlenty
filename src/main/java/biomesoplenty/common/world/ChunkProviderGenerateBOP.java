@@ -60,6 +60,7 @@ public class ChunkProviderGenerateBOP implements IChunkProvider
     private BOPWorldSettings settings;
     private IBlockState seaBlockState;
     private IBlockState stoneBlockState;
+    private IBlockState bedrockBlockState;
     private MapGenBase caveGenerator;
     private MapGenStronghold strongholdGenerator;
     private MapGenVillage villageGenerator;
@@ -106,6 +107,8 @@ public class ChunkProviderGenerateBOP implements IChunkProvider
         // blockstates for stone and sea blocks
         this.stoneBlockState = Blocks.stone.getDefaultState();
         this.seaBlockState = Blocks.water.getDefaultState();
+
+        this.bedrockBlockState = Blocks.bedrock.getDefaultState();
         
         // store a TerrainSettings object for each biome
         this.biomeTerrainSettings = new HashMap<BiomeGenBase, TerrainSettings>();
@@ -133,37 +136,7 @@ public class ChunkProviderGenerateBOP implements IChunkProvider
         
         // hand over to the biomes for them to set bedrock grass and dirt
         BiomeGenBase[] biomes = this.worldObj.getWorldChunkManager().loadBlockGeneratorData(null, chunkX * 16, chunkZ * 16, 16, 16);
-        this.replaceBlocksForBiome(chunkX, chunkZ, chunkprimer, biomes);
-
-        // add structures
-        if (this.settings.useCaves)
-        {
-            this.caveGenerator.func_175792_a(this, this.worldObj, chunkX, chunkZ, chunkprimer);
-        }
-        if (this.settings.useRavines)
-        {
-            this.ravineGenerator.func_175792_a(this, this.worldObj, chunkX, chunkZ, chunkprimer);
-        }
-        if (this.settings.useMineShafts && this.mapFeaturesEnabled)
-        {
-            this.mineshaftGenerator.func_175792_a(this, this.worldObj, chunkX, chunkZ, chunkprimer);
-        }
-        if (this.settings.useVillages && this.mapFeaturesEnabled)
-        {
-            this.villageGenerator.func_175792_a(this, this.worldObj, chunkX, chunkZ, chunkprimer);
-        }
-        if (this.settings.useStrongholds && this.mapFeaturesEnabled)
-        {
-            this.strongholdGenerator.func_175792_a(this, this.worldObj, chunkX, chunkZ, chunkprimer);
-        }
-        if (this.settings.useTemples && this.mapFeaturesEnabled)
-        {
-            this.scatteredFeatureGenerator.func_175792_a(this, this.worldObj, chunkX, chunkZ, chunkprimer);
-        }
-        if (this.settings.useMonuments && this.mapFeaturesEnabled)
-        {
-            this.oceanMonumentGenerator.func_175792_a(this, this.worldObj, chunkX, chunkZ, chunkprimer);
-        }
+//        this.replaceBlocksForBiome(chunkX, chunkZ, chunkprimer, biomes);
 
         // create and return the chunk
         Chunk chunk = new Chunk(this.worldObj, chunkprimer, chunkX, chunkZ);
@@ -213,70 +186,31 @@ public class ChunkProviderGenerateBOP implements IChunkProvider
                 // divide chunk into 32 subchunks in y direction, index as iy
                 for (int iy = 0; iy < 32; ++iy)
                 {
-                    // get the noise values from the noise array
-                    // these are the values at the corners of the subchunk
-                    double n_x0y0z0 = this.noiseArray[k_x0z0 + iy];
-                    double n_x0y0z1 = this.noiseArray[k_x0z1 + iy];
-                    double n_x1y0z0 = this.noiseArray[k_x1z0 + iy];
-                    double n_x1y0z1 = this.noiseArray[k_x1z1 + iy];
-                    double n_x0y1z0 = this.noiseArray[k_x0z0 + iy + 1];
-                    double n_x0y1z1 = this.noiseArray[k_x0z1 + iy + 1];
-                    double n_x1y1z0 = this.noiseArray[k_x1z0 + iy + 1];
-                    double n_x1y1z1 = this.noiseArray[k_x1z1 + iy + 1];
                     
                     // linearly interpolate between the noise points to get a noise value for each block in the subchunk
 
-                    double noiseStepY00 = (n_x0y1z0 - n_x0y0z0) * oneEighth;
-                    double noiseStepY01 = (n_x0y1z1 - n_x0y0z1) * oneEighth;
-                    double noiseStepY10 = (n_x1y1z0 - n_x1y0z0) * oneEighth;
-                    double noiseStepY11 = (n_x1y1z1 - n_x1y0z1) * oneEighth;
-                    
-                    double noiseStartX0 = n_x0y0z0;
-                    double noiseStartX1 = n_x0y0z1;
-                    double noiseEndX0 = n_x1y0z0;
-                    double noiseEndX1 = n_x1y0z1;
+
  
                     // subchunk is 8 blocks high in y direction, index as jy
                     for (int jy = 0; jy < 8; ++jy)
                     {
                         
-                        double noiseStartZ = noiseStartX0;
-                        double noiseEndZ = noiseStartX1;
-                        
-                        double noiseStepX0 = (noiseEndX0 - noiseStartX0) * oneQuarter;
-                        double noiseStepX1 = (noiseEndX1 - noiseStartX1) * oneQuarter;
 
                         // subchunk is 4 blocks long in x direction, index as jx
                         for (int jx = 0; jx < 4; ++jx)
                         {
-                            double noiseStepZ = (noiseEndZ - noiseStartZ) * oneQuarter;
-                            double noiseVal = noiseStartZ;
 
                             // subchunk is 4 blocks long in x direction, index as jz
                             for (int jz = 0; jz < 4; ++jz)
                             {
                                 
-                                // If the noise value is above zero, this block starts as stone
-                                // Otherwise it's 'empty' - air above sealevel and water below it
-                                if (noiseVal > 0.0D)
+                            	// one block in each 4x4x4 chunk (2 per 4x8x4)
+                                if (jz == 2 && jx == 2 && jy % 4 == 2)
                                 {
                                     primer.setBlockState(ix * 4 + jx, iy * 8 + jy, iz * 4 + jz, this.stoneBlockState);
                                 }
-                                else if (iy * 8 + jy < this.settings.seaLevel)
-                                {
-                                    primer.setBlockState(ix * 4 + jx, iy * 8 + jy, iz * 4 + jz, this.seaBlockState);
-                                }
-                                noiseVal += noiseStepZ;
                             }
-
-                            noiseStartZ += noiseStepX0;
-                            noiseEndZ += noiseStepX1;
                         }
-
-                        noiseStartX0 += noiseStepY00;
-                        noiseStartX1 += noiseStepY01;
-                        noiseEndX0 += noiseStepY10;
-                        noiseEndX1 += noiseStepY11;
                     }
                 }
             }
@@ -477,90 +411,7 @@ public class ChunkProviderGenerateBOP implements IChunkProvider
 
         MinecraftForge.EVENT_BUS.post(new PopulateChunkEvent.Pre(chunkProvider, worldObj, rand, chunkX, chunkZ, hasVillageGenerated));
 
-        // populate the structures
-        if (this.settings.useMineShafts && this.mapFeaturesEnabled)
-        {
-            this.mineshaftGenerator.func_175794_a(this.worldObj, this.rand, chunkcoordintpair);
-        }
-        if (this.settings.useVillages && this.mapFeaturesEnabled)
-        {
-            hasVillageGenerated = this.villageGenerator.func_175794_a(this.worldObj, this.rand, chunkcoordintpair);
-        }
-        if (this.settings.useStrongholds && this.mapFeaturesEnabled)
-        {
-            this.strongholdGenerator.func_175794_a(this.worldObj, this.rand, chunkcoordintpair);
-        }
-        if (this.settings.useTemples && this.mapFeaturesEnabled)
-        {
-            this.scatteredFeatureGenerator.func_175794_a(this.worldObj, this.rand, chunkcoordintpair);
-        }
-        if (this.settings.useMonuments && this.mapFeaturesEnabled)
-        {
-            this.oceanMonumentGenerator.func_175794_a(this.worldObj, this.rand, chunkcoordintpair);
-        }
-
-        BlockPos decorateStart = blockpos.add(8, 0, 8);
-        BlockPos target;
-        
-        // add water lakes
-        if (biomegenbase.rainfall > 0.01F && biomegenbase != BiomeGenBase.desert && biomegenbase != BiomeGenBase.desertHills && this.settings.useWaterLakes && !hasVillageGenerated && this.rand.nextInt(this.settings.waterLakeChance) == 0 && TerrainGen.populate(chunkProvider, worldObj, rand, chunkX, chunkZ, hasVillageGenerated, LAKE))
-        {
-            target = decorateStart.add(this.rand.nextInt(16), this.rand.nextInt(256), this.rand.nextInt(16));
-            (new WorldGenLakes(Blocks.water)).generate(this.worldObj, this.rand, target);
-        }
-
-        // add lava lakes
-        if (TerrainGen.populate(chunkProvider, worldObj, rand, chunkX, chunkZ, hasVillageGenerated, LAVA) && !hasVillageGenerated && this.rand.nextInt(this.settings.lavaLakeChance / 10) == 0 && this.settings.useLavaLakes)
-        {
-            target = decorateStart.add(this.rand.nextInt(16), this.rand.nextInt(248) + 8, this.rand.nextInt(16));
-            if (target.getY() < 63 || this.rand.nextInt(this.settings.lavaLakeChance / 8) == 0)
-            {
-                (new WorldGenLakes(Blocks.lava)).generate(this.worldObj, this.rand, target);
-            }
-        }
-
-        // add dungeons
-        if (this.settings.useDungeons && TerrainGen.populate(chunkProvider, worldObj, rand, chunkX, chunkZ, hasVillageGenerated, DUNGEON))
-        {
-            for (int i = 0; i < this.settings.dungeonChance; ++i)
-            {
-                target = decorateStart.add(this.rand.nextInt(16), this.rand.nextInt(256), this.rand.nextInt(16));
-                (new WorldGenDungeons()).generate(this.worldObj, this.rand, target);
-            }
-        }
-
-        // hand over to the biome to decorate itself
-        biomegenbase.decorate(this.worldObj, this.rand, new BlockPos(x, 0, z));
-        
-        // add animals
-        if (TerrainGen.populate(chunkProvider, worldObj, rand, chunkX, chunkZ, hasVillageGenerated, ANIMALS))
-        {
-            SpawnerAnimals.performWorldGenSpawning(this.worldObj, biomegenbase, x + 8, z + 8, 16, 16, this.rand);
-        }
-        
-        // add ice and snow
-        if (TerrainGen.populate(chunkProvider, worldObj, rand, chunkX, chunkZ, hasVillageGenerated, ICE))
-        {
-            for (int i = 0; i < 16; ++i)
-            {
-                for (int j = 0; j < 16; ++j)
-                {
-                    target = this.worldObj.getPrecipitationHeight(decorateStart.add(i, 0, j));
-                    BiomeGenBase biome = this.worldObj.getBiomeGenForCoords(target);
-                    // if it's cold enough for ice, and there's exposed water, then freeze it
-                    if (this.worldObj.canBlockFreezeWater(target.down()))
-                    {
-                        this.worldObj.setBlockState(target.down(), Blocks.ice.getDefaultState(), 2);
-                    }
-                    // if it's cold enough for snow, add a layer of snow
-                    if (biome.rainfall > 0.01F && this.worldObj.canSnowAt(target, true))
-                    {
-                        this.worldObj.setBlockState(target, Blocks.snow_layer.getDefaultState(), 2);
-                    }
-                }
-            }           
-        }
-
+        Chunk chunk = chunkProvider.provideChunk(chunkX, chunkZ);
         MinecraftForge.EVENT_BUS.post(new PopulateChunkEvent.Post(chunkProvider, worldObj, rand, chunkX, chunkZ, hasVillageGenerated));
 
         BlockFalling.fallInstantly = false;
